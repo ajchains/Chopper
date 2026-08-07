@@ -4,7 +4,6 @@ import asyncio
 import logging
 from typing import Dict
 
-from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
 from dag_utils import print_dag
@@ -17,16 +16,20 @@ logger = logging.getLogger("pipeline")
 
 
 def build_chain(prompts: dict, llm):
-    parser = PydanticOutputParser(pydantic_object=DependencySpecOutput)
     return (
         ChatPromptTemplate.from_messages(
             [
                 ("system", prompts["dependency_resolution"]),
-                ("user", "# DAG: {dag}\n\n# Your Task\nId: {task_id}\nName: {task_name}"),
-            ]
+                (
+                    "user",
+                    "# DAG: {{dag}}\n\n"
+                    "# Your Task\nId: {{task_id}}\nName: {{task_name}}\n\n"
+                    "# Project Summary\n{{project_summary}}"
+                ),
+            ],
+            template_format = "mustache"
         )
-        | llm
-        | parser
+        | llm.with_structured_output(DependencySpecOutput)
     )
 
 
@@ -49,6 +52,7 @@ async def dependency_resolution(state: State, chain) -> State:
     logger.info("DEPENDENCY RESOLUTION")
     dag: Dict[str, Task] = state["dag"]
     task_ids = list(dag.keys())
+    project_summary = state["project_summary"]
     #pool = min(len(task_ids), state.get("pool", DEFAULT_POOL))
 
     inputs = [
@@ -56,16 +60,18 @@ async def dependency_resolution(state: State, chain) -> State:
             "dag": print_dag(dag, own_task=tid),
             "task_id": tid,
             "task_name": dag[tid].task_name,
-            "project_summary": state["project_summary"],
+            "project_summary": project_summary,
         }
         for tid in task_ids
     ]
 
+    await awrite_json("snapshots/dependency_resolution_inputs.json", inputs)
+
     #issues, failures = await run_fanout(chain, inputs, pool, "dependency_resolution")
     issues, failures = await run_fanout(chain, inputs ,"dependency_resolution")
 
+    await awrite_json("snapshots/dependency_resolution_issues.json", issues)
     await asyncio.gather(*(_write(out, dag[out.task_id].task_name) for out in issues))
 
-    await awrite_json("snapshots/dependency_resolution_issues.json", issues)
 
     return {"dependency_specs": issues}

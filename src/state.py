@@ -11,9 +11,10 @@ from schemas import (
     ExecutorOutput,
     OutputFileResolution,
     RejectedChange,
-    ResolvedConflict,
+    DependencyConflictResolution,
     Task,
     VerificationOutput,
+    ParallelismAnalysis,
 )
 
 DEFAULT_POOL = 8
@@ -28,6 +29,7 @@ class State(TypedDict):
     project_summary: str
     decomposition_strategy: str
     dag: Dict[str, Task]
+    parallelism_analysis: ParallelismAnalysis | None = None
     total_tasks: int
 
     # Phase 2 — DAG Verification (parallel fan-out, one agent per task)
@@ -46,7 +48,7 @@ class State(TypedDict):
 
     # Phase 5 — Dependency Coordinator
     integration_summary: str
-    resolved_conflicts: list[ResolvedConflict]
+    resolved_conflicts: list[DependencyConflictResolution]
     dependency_contracts: list[DependencyContract]
     # dag is overwritten here with CoordinatorOutput.dag (canonicalized paths)
 
@@ -87,6 +89,7 @@ def default_state() -> dict:
         "project_summary": "",
         "decomposition_strategy": "",
         "dag": {},
+        "parallelism_analysis": None,
         "total_tasks": 0,
         "changes": [],
         "changes_required": 0,

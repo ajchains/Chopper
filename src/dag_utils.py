@@ -94,9 +94,13 @@ def print_dag(dag: dict[str, Task], own_task: str | None = None) -> str:
         md.append("")
 
         md.append("### Depends On")
-        deps = sorted(dep.task_id for dep in task.dependencies)
-        if deps:
-            md.extend(f"- {d}" for d in deps)
+        sorted_deps = sorted(dep.task_id for dep in task.dependencies)
+        if sorted_deps:
+            deps = {dep.task_id : dep.dependencies for dep in task.dependencies}
+            for i, d in enumerate(sorted_deps, start = 1) :
+                md.append(f"{i}. {d}")
+                md.extend(f"  - {dep}" for dep in deps[d])
+                md.append("")
         else:
             md.append("- None")
 

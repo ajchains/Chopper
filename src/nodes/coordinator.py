@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 
-from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
 from dag_utils import print_dag, to_markdown
@@ -14,16 +13,20 @@ logger = logging.getLogger("pipeline")
 
 
 def build_chain(prompts: dict, llm):
-    parser = PydanticOutputParser(pydantic_object=CoordinatorOutput)
     return (
         ChatPromptTemplate.from_messages(
             [
                 ("system", prompts["coordinator"]),
-                ("user", "# Final DAG: {dag}\n\n# Dependency Specifications:\n{specifications}"),
-            ]
+                (
+                    "user",
+                    "# Final DAG: {{dag}}\n\n"
+                    "# Dependency Specifications:\n{{specifications}}\n\n"
+                    "# Project Summary\n{{project_summary}}"
+                ),
+            ],
+            template_format = "mustache"
         )
-        | llm
-        | parser
+        | llm.with_structured_output(CoordinatorOutput)
     )
 
 

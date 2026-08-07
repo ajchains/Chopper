@@ -20,12 +20,6 @@ def _make_node(fn, chain):
     return _node
 
 
-def _make_planner_node(fn, chain, prompts):
-    async def _node(s):
-        return await fn(s, chain, prompts)
-    return _node
-
-
 def build_graph(prompts: Dict[str, str], llms: Dict[str, object], checkpointer) -> object:
     graph = StateGraph(State)
 
@@ -33,10 +27,7 @@ def build_graph(prompts: Dict[str, str], llms: Dict[str, object], checkpointer) 
         llm = llms[phase]
         chain = build_chain(prompts, llm)
 
-        if node_fn is planner_agent:
-            graph.add_node(phase, _make_planner_node(node_fn, chain, prompts))
-        else:
-            graph.add_node(phase, _make_node(node_fn, chain))
+        graph.add_node(phase, _make_node(node_fn, chain))
 
     graph.add_node("add_files", add_files)
 

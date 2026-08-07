@@ -4,7 +4,6 @@ import asyncio
 import logging
 from typing import Dict
 
-from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
 from dag_utils import print_dag, to_markdown
@@ -17,20 +16,20 @@ logger = logging.getLogger("pipeline")
 
 
 def build_chain(prompts: dict, llm):
-    parser = PydanticOutputParser(pydantic_object=ExecutorOutput)
     return (
         ChatPromptTemplate.from_messages(
             [
                 ("system", prompts["executor"]),
                 (
                     "user",
-                    "# DAG:\n{dag}\n\n\n# Dependency Contracts:\n{dependency_contracts}"
-                    "\n\n\n# Your Task\nId: {task_id}\nName: {task_name}",
+                    "# DAG:\n{dag}\n\n"
+                    "# Your Task\nId: {task_id}\nName: {task_name}\n\n"
+                    "# Dependency Contracts:\n{dependency_contracts}\n\n"
+                    "# Project Summary\n{project_summary}"
                 ),
             ]
         )
-        | llm
-        | parser
+        | llm.with_structured_output(ExecutorOutput)
     )
 
 
@@ -39,7 +38,6 @@ async def _write(out: ExecutorOutput, task_name: str) -> None:
         body = (
             f"# Task {out.task_id} {task_name}\n\n---\n\n"
             "## Summary\n" + out.task_summary + "\n\n---\n\n"
-            "## Output File\n" + str(out.output_file) + "\n\n---\n\n"
         )
         await awrite("outputs/executor_agent.md", body, mode="a")
     except Exception as e:
@@ -52,6 +50,7 @@ async def executor(state: State, chain) -> State:
     task_ids = list(dag.keys())
     #pool = min(len(task_ids), state.get("pool", DEFAULT_POOL))
     dependency_contracts_string = to_markdown(state["dependency_contracts"])
+    project_summary : str = state["project_summary"]
 
     inputs = [
         {
@@ -59,7 +58,7 @@ async def executor(state: State, chain) -> State:
             "dependency_contracts": dependency_contracts_string,
             "task_id": tid,
             "task_name": dag[tid].task_name,
-            "project_summary": state["project_summary"],
+            "project_summary": project_summary,
         }
         for tid in task_ids
     ]

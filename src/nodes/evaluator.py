@@ -5,7 +5,6 @@ import logging
 from typing import Dict, List
 
 from langchain_core.messages import SystemMessage
-from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
 from dag_utils import to_markdown
@@ -18,7 +17,6 @@ logger = logging.getLogger("pipeline")
 
 
 def build_chain(prompts: dict, llm):
-    parser = PydanticOutputParser(pydantic_object=EvaluatorOutput)
     return (
         ChatPromptTemplate.from_messages(
             [
@@ -32,8 +30,7 @@ def build_chain(prompts: dict, llm):
                 ),
             ]
         )
-        | llm
-        | parser
+        | llm.with_structured_output(EvaluatorOutput)
     )
 
 

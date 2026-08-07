@@ -1,3 +1,7 @@
+prompts:
+  version: 2
+
+
 google:
   models:
     - gemini-3.1-flash-lite
@@ -6,7 +10,7 @@ google:
     - GEMINI_API_KEY
     - GEMINI_API_KEY2
 
-  base_url: https://generativelanguage.googleapis.com/v1beta/openai/
+  # base_url: https://generativelanguage.googleapis.com/v1beta/openai/
 
   rpm_limit: 4
   rpd_limit: 20

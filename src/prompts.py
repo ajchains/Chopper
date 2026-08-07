@@ -4,8 +4,15 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Dict
+import yaml
 
-PROMPTS_DIR = "prompts"
+CONFIG_PATH = "configs/llm_config.yaml"
+
+with open(CONFIG_PATH) as f :
+    config = yaml.safe_load(f)
+
+VERSION = config["prompts"]["versions"]
+PROMPTS_DIR = f"prompts/v{VERSION}"
 
 NODE_FILENAMES = {
     "prompt":                "0. prompt_agent.md",

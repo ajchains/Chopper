@@ -2,35 +2,38 @@ from __future__ import annotations
 
 import logging
 
-from langchain_core.output_parsers import PydanticOutputParser
 from langchain_core.prompts import ChatPromptTemplate
 
 from dag_utils import print_dag, to_markdown
 from io_utils import awrite, awrite_json, log_and_record_error
-from schemas import ValidationOutput, categories_for_prompt
+from schemas import ValidationOutput, compute_parallelism_analysis
 from state import State
 
 logger = logging.getLogger("pipeline")
 
 
 def build_chain(prompts: dict, llm):
-    parser = PydanticOutputParser(pydantic_object=ValidationOutput)
     return (
         ChatPromptTemplate.from_messages(
             [
                 ("system", prompts["dag_validation"]),
-                ("user", "# Original DAG: {dag}\n\n# Verification Reports:\n{changes}"),
+                (
+                    "user",
+                    "# Original DAG: {dag}\n\n"
+                    "# Verification Reports:\n{changes}"
+                    "# Project Summary\n{project_summary}\n\n"
+                    "# Parallelism Analysis (Computed)\n{parallelism_analysis}\n\n"
+                ),
             ]
-        ).partial(categories=categories_for_prompt)
-        | llm
-        | parser
+        )
+        | llm.with_structured_output(ValidationOutput)
     )
 
 
 async def _write(out: ValidationOutput, state: State) -> None:
     try:
         body = (
-            "# DAG\n" + print_dag(out.final_dag) + "\n\n---\n\n"
+            "# DAG\n" + print_dag(out.dag) + "\n\n---\n\n"
             "# Project Summary\n" + str(out.project_summary) + "\n\n---\n\n"
             "# Validation Summary\n" + str(out.validation_summary) + "\n\n---\n\n"
             "# Accepted Changes\n" + str(out.accepted_changes) + "\n\n---\n\n"
@@ -42,8 +45,8 @@ async def _write(out: ValidationOutput, state: State) -> None:
             "snapshots/dag_validation.json",
             {
                 **state,
-                "dag": out.final_dag,
-                "total_tasks": len(out.final_dag),
+                "dag": out.dag,
+                "total_tasks": len(out.dag),
                 "accepted_changes": out.accepted_changes,
                 "rejected_changes": out.rejected_changes,
                 "phase": "dependency_resolution",
@@ -64,17 +67,20 @@ async def dag_validation(state: State, chain) -> State:
             "dag": print_dag(state["dag"]),
             "changes": to_markdown(state["changes"]),
             "project_summary": state["project_summary"],
+            "parallelism_analysis": to_markdown(state["parallelism_analysis"]),
         }
     )
+    parallelism_analysis = compute_parallelism_analysis(out.dag)
 
     await _write(out, state)
 
     return {
-        "dag": out.final_dag,
-        "total_tasks": len(out.final_dag),
+        "dag": out.dag,
+        "total_tasks": len(out.dag),
         "validation_summary": out.validation_summary,
         "accepted_changes": out.accepted_changes,
         "rejected_changes": out.rejected_changes,
         "output_file_resolutions": out.output_file_resolutions,
+        "parallelism_analysis": parallelism_analysis,
         "phase": "dependency_resolution",
     }

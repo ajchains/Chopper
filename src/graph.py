@@ -48,7 +48,8 @@ def build_graph(prompts: Dict[str, str], llms: Dict[str, object], checkpointer) 
 def prepare_app(
     config_path: str = "configs/llm_config.yaml",
     prompts_dir: str = "prompts",
+    prompts_version: str = None,
 ):
-    prompts = load_prompts(prompts_dir)
+    prompts = load_prompts(prompts_dir, prompts_version)
     llms = build_llms(config_path)
     return prompts, llms

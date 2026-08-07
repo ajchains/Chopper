@@ -32,7 +32,8 @@ async def has_checkpoint(app, config) -> bool:
 async def main(
     question: str | None = None,
     config_path: str = "configs/llm_config.yaml",
-    prompts_dir: str = "prompts",
+    prompts_dir: str = None,
+    prompts_version: str = None,
     db_path: str = "checkpoints.db",
     thread_id: str | None = None,
     pool: int = 8,
@@ -43,7 +44,7 @@ async def main(
     Path("executor_output").mkdir(exist_ok=True)
     init_output_files()
 
-    prompts, llms = prepare_app(config_path=config_path, prompts_dir=prompts_dir)
+    prompts, llms = prepare_app(config_path=config_path, prompts_dir=prompts_dir, prompts_version=prompts_version)
 
     
     #state["pool"] = pool
@@ -54,25 +55,27 @@ async def main(
         app = build_graph(prompts, llms, checkpointer)
         logger.info("Starting pipeline  thread=%s", config["configurable"]["thread_id"])
 
-        if await has_checkpoint(app, config):
-            result = await app.ainvoke(None, config=config)
-        else:
-            if question is None:
-                question = input("Enter your task: ").strip()
+        app.get_graph().draw_mermaid_png(output_file_path="docs/graph.png")
 
-            state = default_state()
-            state["question"] = question
-            result = await app.ainvoke(state, config=config)
+    #     if await has_checkpoint(app, config):
+    #         result = await app.ainvoke(None, config=config)
+    #     else:
+    #         if question is None:
+    #             question = input("Enter your task: ").strip()
 
-    logger.info("Pipeline complete")
-    logger.info(
-        "Passed: %d | Failed: %d | Avg score: %.2f",
-        result.get("passed_tasks", 0),
-        result.get("failed_tasks", 0),
-        result.get("average_score", 0.0),
-    )
+    #         state = default_state()
+    #         state["question"] = question
+    #         result = await app.ainvoke(state, config=config)
 
-    return result
+    # logger.info("Pipeline complete")
+    # logger.info(
+    #     "Passed: %d | Failed: %d | Avg score: %.2f",
+    #     result.get("passed_tasks", 0),
+    #     result.get("failed_tasks", 0),
+    #     result.get("average_score", 0.0),
+    # )
+
+    # return result
 
 
 if __name__ == "__main__":
@@ -80,8 +83,9 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Run the multi-agent coding pipeline.")
     parser.add_argument("question", nargs="?", help="Task description (prompted if omitted)")
-    parser.add_argument("--config",  default="configs/llm_config.yaml", help="Path to LLM config YAML")
-    parser.add_argument("--prompts", default="prompts",                  help="Directory containing prompt .md files")
+    parser.add_argument("--config",  default="configs/llm_config.yaml",  help="Path to LLM config YAML")
+    parser.add_argument("--prompts", default=None,                       help="Directory containing prompt .md files")
+    parser.add_argument("--version", default=None,                       help="Version of prompt .md files to use")
     parser.add_argument("--db",      default="checkpoints.db",           help="SQLite checkpoint DB path")
     parser.add_argument("--thread",  default=None,                       help="Thread ID for checkpointing (auto if omitted)")
     parser.add_argument("--pool",    type=int, default=8,                help="Max concurrent fan-out tasks")
@@ -92,6 +96,7 @@ if __name__ == "__main__":
             question=args.question,
             config_path=args.config,
             prompts_dir=args.prompts,
+            prompts_version=args.version,
             db_path=args.db,
             thread_id=args.thread,
             pool=args.pool,

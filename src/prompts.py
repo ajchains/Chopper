@@ -6,13 +6,13 @@ from pathlib import Path
 from typing import Dict
 import yaml
 
-CONFIG_PATH = "configs/llm_config.yaml"
+CONFIG_PATH = "configs/prompts_config.yaml"
 
 with open(CONFIG_PATH) as f :
     config = yaml.safe_load(f)
 
-VERSION = config["prompts"]["versions"]
-PROMPTS_DIR = f"prompts/v{VERSION}"
+VERSION = config["prompts"]["version"]
+PROMPTS_DIR = config["prompts"]["directory"]
 
 NODE_FILENAMES = {
     "prompt":                "0. prompt_agent.md",
@@ -27,10 +27,12 @@ NODE_FILENAMES = {
 }
 
 
-def load_prompts(directory: str = PROMPTS_DIR) -> Dict[str, str]:
+def load_prompts(directory: str = PROMPTS_DIR, prompts_version = VERSION) -> Dict[str, str]:
     loaded: Dict[str, str] = {}
+    directory = directory or PROMPTS_DIR
+    prompts_version = prompts_version or VERSION
     for phase, filename in NODE_FILENAMES.items():
-        path = Path(directory) / filename
+        path = Path(directory) / f"v{prompts_version}" / filename
         try:
             loaded[phase] = path.read_text()
         except FileNotFoundError as e:

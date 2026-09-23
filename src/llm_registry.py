@@ -8,11 +8,13 @@ from pool_manager.llm import MultiProviderChatLLM, get_llm
 
 
 CONFIG_PATH = "configs/llm_config.yaml"
+CODING_CONFIG_PATH = "configs/coding_llm_config.yaml"
 T_PLANNER = 1.0
 
 
-def build_llms(config_path: str = CONFIG_PATH) -> Dict[str, MultiProviderChatLLM]:
+def build_llms(config_path: str = CONFIG_PATH, coding_config_path: str = CODING_CONFIG_PATH) -> Dict[str, MultiProviderChatLLM]:
     llm = get_llm(config_path, temperature=0.0)
+    coding_llm = get_llm(coding_config_path, temperature=0.0)
 
     return {
         "refine_prompt": llm,
@@ -21,6 +23,6 @@ def build_llms(config_path: str = CONFIG_PATH) -> Dict[str, MultiProviderChatLLM
         "dag_validation": llm,
         "dependency_resolution": llm,
         "coordinator": llm,
-        "executor": llm,
+        "executor": coding_llm,
         "evaluator": llm,
     }

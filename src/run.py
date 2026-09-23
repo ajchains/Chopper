@@ -55,27 +55,27 @@ async def main(
         app = build_graph(prompts, llms, checkpointer)
         logger.info("Starting pipeline  thread=%s", config["configurable"]["thread_id"])
 
-        app.get_graph().draw_mermaid_png(output_file_path="docs/graph.png")
+        # app.get_graph().draw_mermaid_png(output_file_path="docs/graph.png")
 
-    #     if await has_checkpoint(app, config):
-    #         result = await app.ainvoke(None, config=config)
-    #     else:
-    #         if question is None:
-    #             question = input("Enter your task: ").strip()
+        if await has_checkpoint(app, config):
+            result = await app.ainvoke(None, config=config)
+        else:
+            if question is None:
+                question = input("Enter your task: ").strip()
 
-    #         state = default_state()
-    #         state["question"] = question
-    #         result = await app.ainvoke(state, config=config)
+            state = default_state()
+            state["question"] = question
+            result = await app.ainvoke(state, config=config)
 
-    # logger.info("Pipeline complete")
-    # logger.info(
-    #     "Passed: %d | Failed: %d | Avg score: %.2f",
-    #     result.get("passed_tasks", 0),
-    #     result.get("failed_tasks", 0),
-    #     result.get("average_score", 0.0),
-    # )
+    logger.info("Pipeline complete")
+    logger.info(
+        "Passed: %d | Failed: %d | Avg score: %.2f",
+        result.get("passed_tasks", 0),
+        result.get("failed_tasks", 0),
+        result.get("average_score", 0.0),
+    )
 
-    # return result
+    return result
 
 
 if __name__ == "__main__":
